@@ -8,6 +8,7 @@ Ollama 本地示例（关闭 think，与 Qwen3 推理链无关）::
     python run_experiments.py --ollama-qwen35-2b   # qwen3.5:2b
     python run_experiments.py --ollama-qwen35-4b   # qwen3.5:4b
     python run_experiments.py --ollama-llama32-3b  # llama3.2:3b
+    python run_experiments.py --ollama-qwen3-08b  # qwen3.5:0.8b（think 关）
     # 等价于 -m ollama --ollama-model …（默认不带 --think，即 think=false）
 """
 
@@ -121,8 +122,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Table 2: HyKGE / KGRAG / Base",
         epilog=(
-            "Ollama 快捷方式（think=false）：--ollama-qwen35-2b / --ollama-qwen35-4b / --ollama-llama32-3b。"
-            " 也可手写：-m ollama --ollama-model llama3.2:3b（勿加 --think）。"
+            "Ollama 快捷方式（think=false）：--ollama-qwen35-2b / --ollama-qwen35-4b / "
+            "--ollama-llama32-3b / --ollama-qwen3-08b。"
+            " 也可手写：-m ollama --ollama-model qwen3.5:0.8b（勿加 --think）。"
         ),
     )
     parser.add_argument(
@@ -147,9 +149,14 @@ def main():
         help="使用 Ollama 模型 llama3.2:3b，且关闭 think（think=false；会设置 -m ollama）",
     )
     parser.add_argument(
+        "--ollama-qwen3-08b",
+        action="store_true",
+        help="使用 Ollama 模型 qwen3.5:0.8b，且关闭 think（think=false；会设置 -m ollama）",
+    )
+    parser.add_argument(
         "--ollama-model",
         default="qwen3.5:9b",
-        help="Ollama 模型名，如 qwen3.5:9b、qwen3.5:4b、llama3.2:3b",
+        help="Ollama 模型名，如 qwen3.5:9b、qwen3.5:0.8b、llama3.2:3b",
     )
     parser.add_argument("--ollama-host", default="http://127.0.0.1:11434", help="Ollama 服务地址")
     parser.add_argument("--think", action="store_true", help="Ollama 开启 think（默认关闭，等价 think=false）")
@@ -182,11 +189,12 @@ def main():
         args.ollama_qwen35_2b,
         args.ollama_qwen35_4b,
         args.ollama_llama32_3b,
+        args.ollama_qwen3_08b,
     )
     if sum(1 for p in _ollama_presets if p) > 1:
         parser.error(
             "以下参数仅可同时使用一个："
-            "--ollama-qwen35-2b、--ollama-qwen35-4b、--ollama-llama32-3b"
+            "--ollama-qwen35-2b、--ollama-qwen35-4b、--ollama-llama32-3b、--ollama-qwen3-08b"
         )
 
     if args.ollama_qwen35_2b:
@@ -222,9 +230,21 @@ def main():
         args.model = "ollama"
         args.ollama_model = "llama3.2:3b"
         args.think = False
+    elif args.ollama_qwen3_08b:
+        if args.model is not None and args.model != "ollama":
+            parser.error("--ollama-qwen3-08b 仅可与 -m ollama 联用（或未指定 -m）")
+        if args.think:
+            parser.error(
+                "--ollama-qwen3-08b 固定 think=false；若需 qwen3.5:0.8b 且 think，请使用："
+                " -m ollama --ollama-model qwen3.5:0.8b --think"
+            )
+        args.model = "ollama"
+        args.ollama_model = "qwen3.5:0.8b"
+        args.think = False
     if args.model is None:
         parser.error(
-            "请指定 -m/--model，或使用 --ollama-qwen35-2b / --ollama-qwen35-4b / --ollama-llama32-3b"
+            "请指定 -m/--model，或使用 --ollama-qwen35-2b / --ollama-qwen35-4b / "
+            "--ollama-llama32-3b / --ollama-qwen3-08b"
         )
 
     model_name = MODEL_MAP[args.model]

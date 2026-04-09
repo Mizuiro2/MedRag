@@ -1,3 +1,6 @@
 disease-kb/
 .cursor/disease-kb/
 .cursor/
+phase4_experiments/table2_results.txt
+phase4_experiments/table3_results.txt
+phase4_experiments/hykge_ablation_results.txt
