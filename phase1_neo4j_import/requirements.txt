@@ -1,0 +1,4 @@
+# Neo4j 疾病知识图谱导入 - 依赖
+# 使用 rag_fyp conda 环境: G:\Anaconda\envs\rag_fyp\python.exe
+
+py2neo>=2021.2.3

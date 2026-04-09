@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+---
+description: 强制使用rag_fyp conda环境
+globs: *.py
+alwaysApply: true
+---
+
+# Conda环境配置
+
+本项目必须使用名为 `rag_fyp` 的conda环境。
+
+## Python解释器路径
+- 绝对路径：`G:\Anaconda\envs\rag_fyp\python.exe`
+- 永远不要使用无路径的 `python` 命令
+
+## 运行Python命令时
+1. 使用绝对路径执行：G:\Anaconda\envs\rag_fyp\python.exe script.py
+2. 安装包时必须使用：G:\Anaconda\envs\rag_fyp\python.exe -m pip install 包名
+
+## 验证命令
+运行以下命令确认环境正确：G:\Anaconda\envs\rag_fyp\python.exe -c "import sys; print(sys.executable); import site; print('当前环境site-packages:', site.getsitepackages())"

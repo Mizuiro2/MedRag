@@ -1,0 +1,10 @@
+# HyKGE RAG 系统依赖
+# 使用 rag_fyp conda 环境
+
+torch>=1.9.0
+transformers>=4.20.0
+neo4j>=5.0.0
+requests>=2.28.0
+numpy>=1.20.0
+# 与 huggingface_hub>=0.20 兼容（旧版 ST 会 import 已删除的 HfFolder）
+sentence-transformers>=3.0.0

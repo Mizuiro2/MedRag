@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedRAG - 医学知识图谱问答</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="header">
+      <h1>MedRAG</h1>
+      <p class="subtitle">基于 HyKGE 的医学知识图谱问答系统</p>
+    </header>
+
+    <main class="main">
+      <section class="chat-section">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-wrap">
+          <textarea id="questionInput" placeholder="输入医学问题，例如：糖尿病有什么症状？" rows="2"></textarea>
+          <button id="sendBtn" type="button">发送</button>
+        </div>
+      </section>
+
+      <section class="graph-section">
+        <div class="graph-header">
+          <h2>检索知识图谱</h2>
+          <div class="graph-controls">
+          <span class="graph-info" id="graphInfo">锚点实体 + top10 关系链</span>
+        </div>
+        </div>
+        <div id="graphContainer"></div>
+        <p class="graph-hint" id="graphHint">发送问题后，此处将显示检索到的知识链条</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/force-graph@1.43.3/dist/force-graph.min.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

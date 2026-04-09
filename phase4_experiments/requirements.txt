@@ -1,0 +1,8 @@
+# Phase4 实验依赖
+# 复用 phase2 环境，额外需要：
+# PPL 默认用 Qwen2.5 系列，需较新 transformers（否则 Qwen2Tokenizer 无法加载、PPL 恒为 N/A）
+transformers>=4.40.0
+openpyxl>=3.0.0
+pandas>=1.3.0
+openai>=1.0.0
+rouge-score>=0.1.0
