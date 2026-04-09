@@ -76,7 +76,9 @@ class HyKGERunner:
         timings["rerank"] = time.perf_counter() - t0
 
         t0 = time.perf_counter()
-        answer = get_answer(self.model_name, question, pruned_chains)
+        answer = get_answer(
+            self.model_name, question, pruned_chains, include_entity_desc=True
+        )
         timings["llm_reader"] = time.perf_counter() - t0
 
         timings["total"] = time.perf_counter() - t_all

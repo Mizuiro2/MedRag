@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-HyKGE 消融实验（Table2 同指标 EM / PCR）：固定答题模型，逐模块关闭各跑一次。
+HyKGE 消融实验（与论文 Table2 消融设置一致，5 种变体 + 完整基线）。
 
-模式（一次只关一块）：
-  full              完整 HyKGE
-  no_ho             无 HO：不调用假设生成，NER/分块仅用题干
-  no_rerank         无重排序：直接取前 RERANK_TOP_K 条链
-  no_kg             无图谱检索：仍跑 HO/NER/链接，Reader 无背景链
-  no_entity_linking 无 GTE 链接，无检索
-  no_ner            无 NER，无检索
+变体（HyKGE 论文「消融实验具体设置」）：
+  full           完整 HyKGE（与 hykge_runner 一致，Reader 含实体描述）
+  wo_ho          w/o HO：去掉假设输出模块，NER/重排序分块仅用题干 Q
+  wo_chains      w/o Chains：不使用 Path/CA/CO 推理链，仅用锚点实体 + KG 描述
+  wo_description w/o Description：Reader 仅保留链条结构，不附加头/尾实体描述
+  wo_fragment    w/o Fragment：不做 Q⊕HO 分块，用整段 HO+Q 作为单一 fragment 做重排
+  wo_reranker    w/o Reranker：不做重排序与 TopK，保留检索到的全部链（至多 100 条）
 
-默认 Ollama qwen3.5:2b、think=false；结果写入 hykge_ablation_results.txt（可 -o）。
+默认 Ollama qwen3.5:2b、think=false；结果写入 hykge_ablation_results.txt。
 
 用法::
     G:\\Anaconda\\envs\\rag_fyp\\python.exe run_hykge_ablation.py
-    G:\\Anaconda\\envs\\rag_fyp\\python.exe run_hykge_ablation.py --limit 100 --modes full,no_ho,no_kg
+    G:\\Anaconda\\envs\\rag_fyp\\python.exe run_hykge_ablation.py --limit 100 --modes full,wo_ho,wo_chains
 """
 
 import argparse
@@ -36,31 +36,31 @@ from hykge_runner import HyKGERunner
 from llm_clients import get_hypothesis_output, get_answer, set_ollama_config
 from metrics import em_batch, pcr_batch
 
-# ---------------------------------------------------------------------------
-# 消融定义与运行器（单文件内，便于维护）
-# ---------------------------------------------------------------------------
-
+# 论文 Table2 消融：full + 5 变体
 ABLATION_MODES_ORDER: List[str] = [
     "full",
-    "no_ho",
-    "no_rerank",
-    "no_kg",
-    "no_entity_linking",
-    "no_ner",
+    "wo_ho",
+    "wo_chains",
+    "wo_description",
+    "wo_fragment",
+    "wo_reranker",
 ]
 
 ABLATION_LABELS = {
     "full": "HyKGE（完整）",
-    "no_ho": "−HO（假设生成）",
-    "no_rerank": "−Rerank（重排序）",
-    "no_kg": "−KG（图谱检索）",
-    "no_entity_linking": "−Entity Linking（GTE 链接）",
-    "no_ner": "−NER",
+    "wo_ho": "w/o HO",
+    "wo_chains": "w/o Chains",
+    "wo_description": "w/o Description",
+    "wo_fragment": "w/o Fragment",
+    "wo_reranker": "w/o Reranker",
 }
+
+# w/o Reranker 时 Reader 最多传入条数（避免超长上下文）
+MAX_CHAINS_NO_RERANK = 100
 
 
 class HyKGEAblationRunner(HyKGERunner):
-    """在 HyKGERunner 上增加 query_ablation(mode)。"""
+    """按论文 5 变体实现 query_ablation(mode)。"""
 
     def query_ablation(self, question: str, mode: str) -> dict:
         if mode not in ABLATION_MODES_ORDER:
@@ -69,8 +69,30 @@ class HyKGEAblationRunner(HyKGERunner):
             return self.query(question)
         return self._query_ablation(question, mode)
 
+    def _anchors_to_entity_only_chains(self, anchors: List[str]) -> List[Dict]:
+        """w/o Chains：仅实体名 + 描述，不含 Path/CA/CO 推理链。"""
+        out: List[Dict] = []
+        for name in anchors:
+            ent = self.kg_client.find_entity_by_name(name)
+            desc = ""
+            if ent:
+                desc = self.kg_client.get_entity_description(name, ent["label"]) or ""
+            line = f"实体「{name}」"
+            if desc:
+                line += f"（描述: {desc[:500]}）"
+            out.append({
+                "chain": line,
+                "type": "entity_only",
+                "head": name,
+                "tail": "",
+                "head_desc": "",
+                "tail_desc": "",
+            })
+        return out
+
     def _query_ablation(self, question: str, mode: str) -> dict:
-        if mode == "no_ho":
+        # ---------- HO ----------
+        if mode == "wo_ho":
             ho = question
             combined = question
         else:
@@ -79,22 +101,17 @@ class HyKGEAblationRunner(HyKGERunner):
                 ho = question
             combined = question + " " + ho
 
-        if mode == "no_ner":
-            ner_entities: List = []
-        else:
-            ner_entities = extract_entities(
-                combined, self.tokenizer, self.model, self.device, self.id2label
-            )
-            ner_entities = [e for e in ner_entities if e.get("entity")]
+        # ---------- NER + Entity Linking ----------
+        ner_entities = extract_entities(
+            combined, self.tokenizer, self.model, self.device, self.id2label
+        )
+        ner_entities = [e for e in ner_entities if e.get("entity")]
+        anchors = self.entity_linker.link_entities(ner_entities)
 
-        if mode == "no_entity_linking":
-            anchors: List[str] = []
-        else:
-            anchors = self.entity_linker.link_entities(ner_entities)
-
-        if mode == "no_kg":
-            chains = []
-        elif mode in ("no_ner", "no_entity_linking") or not anchors:
+        # ---------- KG：w/o Chains 不检索推理链 ----------
+        if mode == "wo_chains":
+            chains: List[Dict] = []
+        elif not anchors:
             chains = []
         else:
             chains = self.kg_client.search_reasoning_chains(
@@ -103,13 +120,40 @@ class HyKGEAblationRunner(HyKGERunner):
                 max_chains=100,
             )
 
-        if mode == "no_rerank":
-            pruned_chains = chains[:RERANK_TOP_K]
+        # ---------- Rerank / TopK ----------
+        if mode == "wo_chains":
+            pruned_chains = self._anchors_to_entity_only_chains(anchors)
+            fragments = chunk_text(combined)
+            pruned_chains = rerank_chains(
+                pruned_chains, fragments, top_k=RERANK_TOP_K
+            )
+        elif mode == "wo_reranker":
+            pruned_chains = list(chains)[:MAX_CHAINS_NO_RERANK]
+        elif mode == "wo_fragment":
+            frag = combined.strip()
+            fragments = [frag] if frag else []
+            pruned_chains = rerank_chains(
+                chains, fragments, top_k=RERANK_TOP_K
+            )
         else:
             fragments = chunk_text(combined)
-            pruned_chains = rerank_chains(chains, fragments, top_k=RERANK_TOP_K)
+            pruned_chains = rerank_chains(
+                chains, fragments, top_k=RERANK_TOP_K
+            )
 
-        answer = get_answer(self.model_name, question, pruned_chains)
+        # ---------- Reader ----------
+        if mode == "wo_description":
+            answer = get_answer(
+                self.model_name, question, pruned_chains, include_entity_desc=False
+            )
+        elif mode == "wo_chains":
+            answer = get_answer(
+                self.model_name, question, pruned_chains, include_entity_desc=False
+            )
+        else:
+            answer = get_answer(
+                self.model_name, question, pruned_chains, include_entity_desc=True
+            )
 
         return {
             "answer": answer,
@@ -121,10 +165,6 @@ class HyKGEAblationRunner(HyKGERunner):
             "ablation": mode,
         }
 
-
-# ---------------------------------------------------------------------------
-# 实验主流程
-# ---------------------------------------------------------------------------
 
 MCQ_DATASETS = ["MMCU-Medical", "CMB-Exam"]
 DEFAULT_OUT = os.path.join(_dir, "hykge_ablation_results.txt")
@@ -180,14 +220,14 @@ def append_ablation_report(
     with open(out_path, "a", encoding="utf-8") as f:
         f.write("\n")
         f.write("=" * 72 + "\n")
-        f.write(f"HyKGE 消融实验 | {ts}\n")
+        f.write(f"HyKGE 消融实验（论文 5 变体） | {ts}\n")
         f.write(f"答题模型: {model_label}\n")
         f.write(f"数据: {per_ds_limit_note}\n")
         f.write("指标: EM（式6）、PCR（式7，多选题子集）\n")
         f.write("=" * 72 + "\n\n")
-        hdr = f"{'Mode':<22} {'Dataset':<16} {'EM':>10} {'PCR':>10}\n"
+        hdr = f"{'Mode':<26} {'Dataset':<16} {'EM':>10} {'PCR':>10}\n"
         f.write(hdr)
-        f.write("-" * 64 + "\n")
+        f.write("-" * 68 + "\n")
         for mode in modes_order:
             if mode not in rows:
                 continue
@@ -197,12 +237,14 @@ def append_ablation_report(
                     continue
                 v = rows[mode][ds]
                 pcr_str = f"{v['PCR']:.4f}" if v["PCR"] is not None else "N/A"
-                f.write(f"{label:<22} {ds:<16} {v['EM']:>10.4f} {pcr_str:>10}\n")
+                f.write(f"{label:<26} {ds:<16} {v['EM']:>10.4f} {pcr_str:>10}\n")
         f.write("\n")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="HyKGE 消融：各模块缺失对 EM/PCR 的影响")
+    parser = argparse.ArgumentParser(
+        description="HyKGE 论文消融（w/o HO / Chains / Description / Fragment / Reranker）"
+    )
     parser.add_argument(
         "--ollama-model",
         default="qwen3.5:2b",
@@ -216,7 +258,7 @@ def main() -> None:
         "--modes",
         type=str,
         default=None,
-        help="逗号分隔，如 full,no_ho,no_kg；默认跑全部模式",
+        help="逗号分隔，如 full,wo_ho,wo_chains；默认跑 full+5 变体",
     )
     parser.add_argument("-o", "--output", default=DEFAULT_OUT, help="结果 txt（追加）")
     parser.add_argument("--overwrite", action="store_true", help="运行前清空输出文件")

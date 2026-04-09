@@ -59,12 +59,25 @@ PROMPT_HO = """### Task Description: You are a medical expert. Please write a pa
 """
 
 
-def _format_chains(chains: list) -> str:
+def _format_chains(chains: list, include_entity_desc: bool = True) -> str:
+    """将检索链格式化为 Reader 背景；可选附带 KG 中头/尾实体描述（论文完整版）。"""
     lines = []
     for i, c in enumerate(chains, 1):
         chain_str = c.get("chain", "") if isinstance(c, dict) else str(c)
-        if chain_str:
-            lines.append(f"{i}. {chain_str}")
+        if not chain_str:
+            continue
+        line = f"{i}. {chain_str}"
+        if include_entity_desc and isinstance(c, dict):
+            hd = (c.get("head_desc") or "").strip()
+            td = (c.get("tail_desc") or "").strip()
+            if hd or td:
+                bits = []
+                if hd:
+                    bits.append(f"头实体描述: {hd[:400]}")
+                if td:
+                    bits.append(f"尾实体描述: {td[:400]}")
+                line += " | " + " ".join(bits)
+        lines.append(line)
     return "\n".join(lines) if lines else "（暂无相关链条）"
 
 
@@ -171,9 +184,14 @@ def get_hypothesis_output(model_name: str, query: str) -> Optional[str]:
     return call_llm(model_name, prompt, max_tokens=500)
 
 
-def get_answer(model_name: str, query: str, chains: list) -> str:
-    """基于检索知识生成答案"""
-    knowledge_text = _format_chains(chains)
+def get_answer(
+    model_name: str,
+    query: str,
+    chains: list,
+    include_entity_desc: bool = True,
+) -> str:
+    """基于检索知识生成答案。include_entity_desc=False 对应论文消融 w/o Description。"""
+    knowledge_text = _format_chains(chains, include_entity_desc=include_entity_desc)
     prompt = PROMPT_READER.format(knowledge_chains=knowledge_text, query=query)
     result = call_llm(model_name, prompt, max_tokens=2000)
     return result if result else "生成答案失败"

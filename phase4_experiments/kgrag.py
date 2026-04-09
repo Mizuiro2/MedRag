@@ -51,7 +51,9 @@ class KGRAG:
         pruned_chains = chains[:RERANK_TOP_K]
 
         # 5. LLM Reader
-        answer = get_answer(self.model_name, question, pruned_chains)
+        answer = get_answer(
+            self.model_name, question, pruned_chains, include_entity_desc=True
+        )
 
         return {
             "answer": answer,
