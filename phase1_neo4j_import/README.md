@@ -51,32 +51,32 @@
 ```python
 NEO4J_URI = "neo4j://127.0.0.1:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "qingquan666"
+NEO4J_PASSWORD = "The password you set"
 ```
 
 ## 安装依赖
 
 ```bash
-G:\Anaconda\envs\rag_fyp\python.exe -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## 运行导入
 
 ```bash
 # 在 phase1_neo4j_import 目录下执行
-G:\Anaconda\envs\rag_fyp\python.exe build_medicalgraph.py
+python build_medicalgraph.py
 ```
 
 **首次导入或需要重建时，先清空数据库：**
 
 ```bash
-G:\Anaconda\envs\rag_fyp\python.exe build_medicalgraph.py --clear
+python build_medicalgraph.py --clear
 ```
 
 **指定数据文件路径：**
 
 ```bash
-G:\Anaconda\envs\rag_fyp\python.exe build_medicalgraph.py --data "H:\MedRAG\disease-kb\data\medical.json"
+python build_medicalgraph.py --data "MedRAG\disease-kb\data\medical.json"
 ```
 
 ## 注意事项
