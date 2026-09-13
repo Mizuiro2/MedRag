@@ -16,9 +16,9 @@
 ## 安装与运行
 
 ```bash
-cd h:\MedRAG\phase3_visualization_frontend
-G:\Anaconda\envs\rag_fyp\python.exe -m pip install -r requirements.txt
-G:\Anaconda\envs\rag_fyp\python.exe app.py
+cd MedRAG\phase3_visualization_frontend
+pip install -r requirements.txt
+python app.py
 ```
 
 浏览器访问：http://localhost:5000
