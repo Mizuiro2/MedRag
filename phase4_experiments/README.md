@@ -20,8 +20,8 @@
 ## 运行
 
 ```bash
-cd h:\MedRAG\phase4_experiments
-G:\Anaconda\envs\rag_fyp\python.exe run_experiments.py --model ds
+cd MedRAG\phase4_experiments
+python run_experiments.py --model ds
 ```
 
 ### DeepSeek 需代理时
@@ -50,13 +50,13 @@ run_with_proxy.bat -m ds
 
 ```bash
 # 使用 DeepSeek 完整实验
-G:\Anaconda\envs\rag_fyp\python.exe run_experiments.py -m ds
+python run_experiments.py -m ds
 
 # 使用 Qwen3-max
-G:\Anaconda\envs\rag_fyp\python.exe run_experiments.py -m qwen
+python run_experiments.py -m qwen
 
 # 快速测试（每数据集 5 题）
-G:\Anaconda\envs\rag_fyp\python.exe run_experiments.py -m ds --limit 5
+python run_experiments.py -m ds --limit 5
 ```
 
 ## 依赖
@@ -64,7 +64,7 @@ G:\Anaconda\envs\rag_fyp\python.exe run_experiments.py -m ds --limit 5
 需先安装 phase2 依赖，并额外安装：
 
 ```bash
-G:\Anaconda\envs\rag_fyp\python.exe -m pip install openpyxl openai
+python -m pip install openpyxl openai
 ```
 
 ## 输出
