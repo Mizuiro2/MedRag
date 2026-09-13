@@ -14,13 +14,13 @@
 ## 依赖
 
 - Phase 1 已导入 disease-kb 到 Neo4j
-- W2NER 模型：`G:\W2NER\output`
+- W2NER 模型权重导入
 - DeepSeek API Key（已配置）
 
 ## 安装
 
 ```bash
-G:\Anaconda\envs\rag_fyp\python.exe -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 首次运行会下载 GTE 模型并构建实体嵌入缓存（需数分钟）。
@@ -28,8 +28,8 @@ G:\Anaconda\envs\rag_fyp\python.exe -m pip install -r requirements.txt
 ## 运行
 
 ```bash
-cd h:\MedRAG\phase2_rag_system
-G:\Anaconda\envs\rag_fyp\python.exe hykge.py "糖尿病有什么症状？"
+cd MedRAG\phase2_rag_system
+python hykge.py "糖尿病有什么症状？"
 ```
 
 ## 配置
